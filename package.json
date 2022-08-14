@@ -1,0 +1,28 @@
+{
+  "name": "url-shortener",
+  "version": "1.0.0",
+  "description": "Small Express API for a URL shortener.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Airbus-A330/url-shortener.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Airbus-A330/url-shortener/issues"
+  },
+  "homepage": "https://github.com/Airbus-A330/url-shortener#readme",
+  "dependencies": {
+    "body-parser": "^1.20.0",
+    "chalk": "^4.1.2",
+    "dotenv": "^16.0.1",
+    "express": "^4.18.1",
+    "mongoose": "^6.5.2",
+    "node-fetch": "^3.2.10"
+  }
+}
