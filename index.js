@@ -121,6 +121,14 @@ app.post("/urls", async (req, res) => {
         return;
     }
 
+    if (!/https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/.test(req.body.url)) {
+      res.status(400).send({
+        status: 400,
+        message: "The URL must be in URL form (include http:// or https://)."
+      });
+      return;
+    }
+
     if (config.url.checkLink) {
         let domainCheck = await require("./Functions/checkHarmful")(req.body.url);
 
