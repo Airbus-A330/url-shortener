@@ -16,13 +16,13 @@ git clone https://github.com/airbus-a330/url-shortener
   * Navigate into `config.js` inside the `Config` folder
   * Change the values in that file as necessary
   * Install all packages
-    ```
-    npm install
-    ```
+```
+npm install
+```
   * Run the file
-    ```bash
-    node index.js
-    ```
+```bash
+node index.js
+```
 
 ## Configuration
 | **Property**                	| **Type** 	| **Description**                                                                                         	| **Default Value** 	|
