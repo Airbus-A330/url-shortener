@@ -12,12 +12,12 @@ require("dotenv").config();
 app.use(bodyParser.json());
 
 const creationRL = new RL({
-    limit: require("./Config/config.js").ratelimits.creation.limit,
-    reset: require("./Config/config.js").ratelimits.creation.reset,
+    limit: config.ratelimits.creation.limit,
+    reset: config.ratelimits.creation.reset,
 });
 const viewingRL = new RL({
-    limit: require("./Config/config.js").ratelimits.viewing.limit,
-    reset: require("./Config/config.js").ratelimits.viewing.reset,
+    limit: config.ratelimits.viewing.limit,
+    reset: config.ratelimits.viewing.reset,
 });
 
 (async () => {
@@ -172,7 +172,7 @@ app.post("/urls", async (req, res) => {
         }
     }
 
-    let id = await require("./Functions/idGen.js")(require("./Config/config.js").id.length);
+    let id = await require("./Functions/idGen.js")(config.id.length);
 
     const url = new URLs({
         _id: id,
@@ -189,7 +189,7 @@ app.post("/urls", async (req, res) => {
         status: 200,
         message: "The shortened URL path has been successfully created!",
         code: id,
-        retain: require("./Config/config.js").retain
+        retain: config.retain
     });
 
     await console.log(
@@ -200,11 +200,11 @@ app.post("/urls", async (req, res) => {
     creationRL.increment(req.headers['cf-connecting-ip'] ?? req.headers['x-forwarded-for']);
 });
 
-if (require("./Config/config.js").retain > 0) {
+if (config.retain > 0) {
     setTimeout(async () => {
         let urls = await URLs.find({}).lean().exec();
         for (const url of urls) {
-            if ((url.created_at + require("./Config/config.js").retain) < Date.now()) {
+            if ((url.created_at + config.retain) < Date.now()) {
                 await URLs.findOneAndDelete({
                     _id: url._id
                 }).lean().exec();
