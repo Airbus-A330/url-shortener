@@ -40,21 +40,22 @@ git clone https://github.com/airbus-a330/url-shortener
 ## Usage
 * Shortening a URL:
   * Make a `POST` request to `https://<base_url>/urls` with the body
-  ```json
-  { "url": "https://your_url.here" }
-  ```
+```json
+{ "url": "https://your_url.here" }
+```
   * You will receive the following body (if successful):
-  ```json
-  {
-    "status": 200,
-    "message": "The shortened URL path has been successfully created!",
-    "code": "<STRING_ID>",
-    "retain": <INTEGER_RETENTION>
-  }
-  ```
+```json
+{
+  "status": 200,
+  "message": "The shortened URL path has been successfully created!",
+  "code": "<STRING_ID>",
+  "retain": <INTEGER_RETENTION>
+}
+```
 * Visiting a shortened URL
   * Assuming the URL is not flagged and there are no additional errors, you will immediately be redirected to the website.
   * Make a `GET` request to `https://<base_url>/<url_id>`
+
 
 ## Contributing
 All pull requests are welcome. Please be descriptive on your changes/additions and be respectful to the community in your pull request. Additionally, please make sure to test your code before submitting the pull request to ensure it works.
