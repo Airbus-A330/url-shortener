@@ -60,20 +60,16 @@ app.get("/:code", async (req, res) => {
     }
 
     try {
-        let url = await URLs.findByPk(req.params.code);
+        let url = await Url.findOne({
+            where: {
+                redirect_uri: req.body.url
+            }
+        });
 
         if (!url) {
             res.status(404).send({
                 status: 404,
                 message: "This shortened URL couldn't be found."
-            });
-            return;
-        }
-
-        if (!url) {
-            res.status(404).send({
-                status: 404,
-                message: "This shortend URL couldn't be found."
             });
             return;
         }
@@ -103,17 +99,18 @@ app.get("/:code", async (req, res) => {
                     ' Harmful URL detected and flagged: ' + pc.gray(url.redirect_uri)
                 );
 
-                await URLs.findOneAndUpdate({
-                    _id: url._id
-                }, {
-                    $set: {
+                await Url.update(
+                    {
                         flagged: true,
                         comments: `Automatically flagged at ${new Date().toLocaleString()} by Google SafeBrowsing API.`
+                    },
+                    {
+                        where: {
+                            _id: url._id
+                        },
+                        returning: true
                     }
-                }, {
-                    new: true,
-                    upsert: false
-                }).exec();
+                );
                 return;
             }
         }
@@ -192,7 +189,7 @@ app.post("/urls", async (req, res) => {
     }
 
     if (!config.url.allowMultipleEntries) {
-        let url = await URLs.findOne({
+        let url = await Url.findOne({
             where: {
                 redirect_uri: req.body.url
             }
@@ -214,7 +211,7 @@ app.post("/urls", async (req, res) => {
 
     let id = await require("./Functions/idGen.js")(config.id.length);
 
-    const urlEntity = await URLs.create({
+    const urlEntity = await Url.create({
         _id: id,
         redirect_uri: req.body.url,
         ip: req.headers['cf-connecting-ip'] ?? req.headers['x-forwarded-for'],
@@ -241,7 +238,7 @@ app.post("/urls", async (req, res) => {
 if (config.retain > 0) {
     setInterval(async () => {
         try {
-            let urls = await URLs.findAll();
+            let urls = await Url.findAll();
 
             for (const url of urls) {
                 if ((url.created_at.getTime() + config.retain) < Date.now()) {
