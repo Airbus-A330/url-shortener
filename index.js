@@ -1,13 +1,14 @@
-const express = require("express");
-const mongoose = require("mongoose");
-const bodyParser = require('body-parser')
-const app = express();
-const chalk = require("chalk");
-
 const config = require("./Config/config.js");
 const RL = require("./Functions/ratelimit.js");
 
+const express = require("express");
+const mongoose = require("mongoose");
+const bodyParser = require("body-parser");
+const pc = require("picocolors");
+
 require("dotenv").config();
+
+const app = express();
 
 app.use(bodyParser.json());
 
@@ -62,8 +63,8 @@ app.get("/:code", async (req, res) => {
             message: "This shortend URL has been flagged by the system for the following reason: " + url.comments
         });
         await console.log(
-            chalk.bold.blue('[API]:') +
-            ' Flagged URL visited: ' + chalk.gray(url.redirect_uri)
+            pc.blue(pc.bold('[API]:')) +
+            ' Flagged URL visited: ' + pc.gray(url.redirect_uri)
         );
         return;
     }
@@ -77,8 +78,8 @@ app.get("/:code", async (req, res) => {
             });
 
             await console.log(
-                chalk.bold.red('[SafeBrowsing]:') +
-                ' Harmful URL detected and flagged: ' + chalk.gray(url.redirect_uri)
+                pc.red(pc.bold('[SafeBrowsing]:')) +
+                ' Harmful URL detected and flagged: ' + pc.gray(url.redirect_uri)
             );
 
             await URLs.findOneAndUpdate({
@@ -98,8 +99,8 @@ app.get("/:code", async (req, res) => {
 
     res.redirect(url.redirect_uri);
     await console.log(
-        chalk.bold.blue('[API]:') +
-        ' Redirect URL requested: ' + chalk.gray(url.redirect_uri)
+        pc.blue(pc.bold('[API]:')) +
+        ' Redirect URL requested: ' + pc.gray(url.redirect_uri)
     );
 
     viewingRL.increment(req.headers['cf-connecting-ip'] ?? req.headers['x-forwarded-for']);
@@ -139,8 +140,8 @@ app.post("/urls", async (req, res) => {
             });
 
             await console.log(
-                chalk.bold.red('[SafeBrowsing]:') +
-                ' Harmful URL submission attempt: ' + chalk.gray(url.redirect_uri)
+                pc.red(pc.bold('[SafeBrowsing]:')) +
+                ' Harmful URL submission attempt: ' + pc.gray(url.redirect_uri)
             );
             return;
         }
@@ -155,8 +156,8 @@ app.post("/urls", async (req, res) => {
             });
 
             await console.log(
-                chalk.bold.yellow('[Validator]:') +
-                ' URL that redirected ' + count + 'times detected: ' + chalk.gray(url.redirect_uri)
+                pc.yellow(pc.bold('[Validator]:')) +
+                ' URL that redirected ' + count + 'times detected: ' + pc.gray(url.redirect_uri)
             );
             return;
         }
@@ -173,8 +174,8 @@ app.post("/urls", async (req, res) => {
             });
 
             await console.log(
-                chalk.bold.yellow('[Validator]:') +
-                ' Pre-existing URL detected: ' + chalk.gray(url.redirect_uri)
+                pc.yellow(pc.bold('[Validator]:')) +
+                ' Pre-existing URL detected: ' + pc.gray(url.redirect_uri)
             );
             return;
         }
@@ -201,8 +202,8 @@ app.post("/urls", async (req, res) => {
     });
 
     await console.log(
-        chalk.bold.blue('[API]:') +
-        ' URL created: ' + chalk.gray(url.redirect_uri)
+        pc.blue(pc.bold('[API]:')) +
+        ' URL created: ' + pc.gray(url.redirect_uri)
     );
 
     creationRL.increment(req.headers['cf-connecting-ip'] ?? req.headers['x-forwarded-for']);
@@ -217,8 +218,8 @@ if (config.retain > 0) {
                     _id: url._id
                 }).lean().exec();
                 await console.log(
-                    chalk.bold.pink('[Worker]:') +
-                    ' URL purged due to retention rules: ' + chalk.gray(url._id)
+                    pc.pink(pc.bold('[Worker]:')) +
+                    ' URL purged due to retention rules: ' + pc.gray(url._id)
                 );
             }
         }
@@ -227,7 +228,7 @@ if (config.retain > 0) {
 
 app.listen(8080, () => {
   console.log(
-    chalk.bold.blue('[API]:') +
+    pc.blue(pc.bold('[API]:')) +
     ' API successfully deployed!'
   );
 });
