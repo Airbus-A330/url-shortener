@@ -2,13 +2,17 @@ const config = require("./Config/config.js");
 const RL = require("./Functions/ratelimit.js");
 
 const express = require("express");
-const mongoose = require("mongoose");
+const {
+    Sequelize,
+    DataTypes
+} = require('sequelize');
 const bodyParser = require("body-parser");
 const pc = require("picocolors");
 
 require("dotenv").config();
 
 const app = express();
+const sequelize = new Sequelize('sqlite::memory:');
 
 app.use(bodyParser.json());
 
@@ -22,15 +26,21 @@ const viewingRL = new RL({
 });
 
 (async () => {
-    await mongoose.connect(process.env.MONGO_URI, {
-        autoIndex: false
+    Object.keys(require("./Config/schemas")).forEach((key) => {
+        [key] = sequelize.define(key,
+            require("./Config/schemas")[key], {
+                createdAt: "created_at"
+            }
+        );
+    });
+
+    await sequelize.sync({
+        force: true
     });
 })();
 
-const URLs = mongoose.model("Urls", require("./Config/schemas").urlSchema, "urls");
-
 app.get("/", async (req, res) => {
-  res.redirect("https://github.com/Airbus-A330/url-shortener");
+    res.redirect("https://github.com/Airbus-A330/url-shortener");
 });
 
 app.get("/:code", async (req, res) => {
@@ -44,66 +54,84 @@ app.get("/:code", async (req, res) => {
 
     if (!req.params.code) {
         res.status(400).send({
-          message: "You are missing the shortened code."
+            message: "You are missing the shortened code."
         })
         return;
     }
-    let url = await URLs.findById(req.params.code).lean().exec();
-    if (!url) {
-        res.status(404).send({
-            status: 404,
-            message: "This shortend URL couldn't be found."
-        });
-        return;
-    }
 
-    if (url.flagged) {
-        res.status(403).send({
-            status: 403,
-            message: "This shortend URL has been flagged by the system for the following reason: " + url.comments
-        });
-        await console.log(
-            pc.blue(pc.bold('[API]:')) +
-            ' Flagged URL visited: ' + pc.gray(url.redirect_uri)
-        );
-        return;
-    }
+    try {
+        let url = await URLs.findByPk(req.params.code);
 
-    if (config.url.checkLink) {
-        let domainCheck = await require("./Functions/checkHarmful")(url.redirect_uri);
-        if (domainCheck.matches) {
-            res.status(403).send({
-                status: 403,
-                message: `This URL has been flagged as an unsafe URL. As a result it cannot be visited using this service and should not be visited in general.`
+        if (!url) {
+            res.status(404).send({
+                status: 404,
+                message: "This shortened URL couldn't be found."
             });
-
-            await console.log(
-                pc.red(pc.bold('[SafeBrowsing]:')) +
-                ' Harmful URL detected and flagged: ' + pc.gray(url.redirect_uri)
-            );
-
-            await URLs.findOneAndUpdate({
-                _id: url._id
-            }, {
-                $set: {
-                    flagged: true,
-                    comments: `Automatically flagged at ${new Date().toLocaleString()} by Google SafeBrowsing API.`
-                }
-            }, {
-                new: true,
-                upsert: false
-            }).exec();
             return;
         }
+
+        if (!url) {
+            res.status(404).send({
+                status: 404,
+                message: "This shortend URL couldn't be found."
+            });
+            return;
+        }
+
+        if (url.flagged) {
+            res.status(403).send({
+                status: 403,
+                message: "This shortend URL has been flagged by the system for the following reason: " + url.comments
+            });
+            await console.log(
+                pc.blue(pc.bold('[API]:')) +
+                ' Flagged URL visited: ' + pc.gray(url.redirect_uri)
+            );
+            return;
+        }
+
+        if (config.url.checkLink) {
+            let domainCheck = await require("./Functions/checkHarmful")(url.redirect_uri);
+            if (domainCheck.matches) {
+                res.status(403).send({
+                    status: 403,
+                    message: `This URL has been flagged as an unsafe URL. As a result it cannot be visited using this service and should not be visited in general.`
+                });
+
+                await console.log(
+                    pc.red(pc.bold('[SafeBrowsing]:')) +
+                    ' Harmful URL detected and flagged: ' + pc.gray(url.redirect_uri)
+                );
+
+                await URLs.findOneAndUpdate({
+                    _id: url._id
+                }, {
+                    $set: {
+                        flagged: true,
+                        comments: `Automatically flagged at ${new Date().toLocaleString()} by Google SafeBrowsing API.`
+                    }
+                }, {
+                    new: true,
+                    upsert: false
+                }).exec();
+                return;
+            }
+        }
+
+        res.redirect(url.redirect_uri);
+        await console.log(
+            pc.blue(pc.bold('[API]:')) +
+            ' Redirect URL requested: ' + pc.gray(url.redirect_uri)
+        );
+
+        viewingRL.increment(req.headers['cf-connecting-ip'] ?? req.headers['x-forwarded-for']);
+    } catch (error) {
+        console.log(error.stack)
+        res.status(500).send({
+            status: 500,
+            message: "Internal server error."
+        });
     }
-
-    res.redirect(url.redirect_uri);
-    await console.log(
-        pc.blue(pc.bold('[API]:')) +
-        ' Redirect URL requested: ' + pc.gray(url.redirect_uri)
-    );
-
-    viewingRL.increment(req.headers['cf-connecting-ip'] ?? req.headers['x-forwarded-for']);
 });
 
 app.post("/urls", async (req, res) => {
@@ -123,11 +151,11 @@ app.post("/urls", async (req, res) => {
     }
 
     if (!/https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/.test(req.body.url)) {
-      res.status(400).send({
-        status: 400,
-        message: "The URL must be in URL form (include http:// or https://)."
-      });
-      return;
+        res.status(400).send({
+            status: 400,
+            message: "The URL must be in URL form (include http:// or https://)."
+        });
+        return;
     }
 
     if (config.url.checkLink) {
@@ -165,8 +193,11 @@ app.post("/urls", async (req, res) => {
 
     if (!config.url.allowMultipleEntries) {
         let url = await URLs.findOne({
-            redirect_uri: req.body.url
-        }).lean().exec();
+            where: {
+                redirect_uri: req.body.url
+            }
+        });
+
         if (url) {
             res.status(400).send({
                 status: 400,
@@ -183,7 +214,7 @@ app.post("/urls", async (req, res) => {
 
     let id = await require("./Functions/idGen.js")(config.id.length);
 
-    const url = new URLs({
+    const urlEntity = await URLs.create({
         _id: id,
         redirect_uri: req.body.url,
         ip: req.headers['cf-connecting-ip'] ?? req.headers['x-forwarded-for'],
@@ -191,8 +222,6 @@ app.post("/urls", async (req, res) => {
         comments: "",
         created_at: Date.now()
     });
-
-    url.save();
 
     res.status(200).send({
         status: 200,
@@ -203,32 +232,35 @@ app.post("/urls", async (req, res) => {
 
     await console.log(
         pc.blue(pc.bold('[API]:')) +
-        ' URL created: ' + pc.gray(url.redirect_uri)
+        ' URL created: ' + pc.gray(urlEntity.redirect_uri)
     );
 
     creationRL.increment(req.headers['cf-connecting-ip'] ?? req.headers['x-forwarded-for']);
 });
 
 if (config.retain > 0) {
-    setTimeout(async () => {
-        let urls = await URLs.find({}).lean().exec();
-        for (const url of urls) {
-            if ((url.created_at + config.retain) < Date.now()) {
-                await URLs.findOneAndDelete({
-                    _id: url._id
-                }).lean().exec();
-                await console.log(
-                    pc.pink(pc.bold('[Worker]:')) +
-                    ' URL purged due to retention rules: ' + pc.gray(url._id)
-                );
+    setInterval(async () => {
+        try {
+            let urls = await URLs.findAll();
+
+            for (const url of urls) {
+                if ((url.created_at.getTime() + config.retain) < Date.now()) {
+                    await url.destroy();
+                    await console.log(
+                        pc.pink(pc.bold('[Worker]:')) +
+                        ' URL purged due to retention rules: ' + pc.gray(url._id)
+                    );
+                }
             }
+        } catch (error) {
+            console.error(error);
         }
     }, 5 * 60 * 1000);
 }
 
 app.listen(8080, () => {
-  console.log(
-    pc.blue(pc.bold('[API]:')) +
-    ' API successfully deployed!'
-  );
+    console.log(
+        pc.blue(pc.bold('[API]:')) +
+        ' API successfully deployed!'
+    );
 });

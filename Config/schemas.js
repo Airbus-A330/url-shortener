@@ -1,13 +1,9 @@
-const { Schema } = require("mongoose");
+const { DataTypes } = require('sequelize');
 
-exports.urlSchema = new Schema({
-  _id: String,
-  redirect_uri: String,
-  ip: String,
-  flagged: Boolean,
-  comments: String,
-  created_at: Number
-}, {
-  _id: false,
-  versionKey: false
-});
+exports.Url = {
+  _id: DataTypes.STRING,
+  redirect_uri: DataTypes.STRING,
+  ip: DataTypes.STRING,
+  flagged: DataTypes.BOOLEAN,
+  comments: DataTypes.STRING
+};
